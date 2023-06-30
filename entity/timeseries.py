@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -101,6 +103,28 @@ class MTS(object):
         self.clean = self.origin.copy(deep=True)
         # 人工清洗U3_HNV20CT111
         self.clean = self.clean[int(len(self.origin) * 0.33): int(len(self.origin) * 0.4)]
+        # 用速度约束清洗U3_HNV20CT111
+        values = self.clean['U3_HNV20CT111'].values
+        s = 0.1
+        for i in range(1, len(values)):
+            if values[i] - values[i-1] > s:
+                values[i] = values[i-1] + s
+            elif values[i] - values[i-1] < -s:
+                values[i] = values[i-1] - s
+        self.clean['U3_HNV20CT111'] = values
+        # 在U3_HNC10CT14注入一个连续错误并尝试用速度约束修复
+        values = self.clean['U3_HNC10CT14'].values
+        for i in range(10000, 11000):
+            values[i] = values[i] - 0.5 - random.random() * 0.05
+        self.clean['U3_HNC10CT14'] = values
+        # 速度约束清洗
+        s = 0.01
+        for i in range(1, len(values)):
+            if values[i] - values[i - 1] > s:
+                values[i] = values[i - 1] + s
+            elif values[i] - values[i - 1] < -s:
+                values[i] = values[i - 1] - s
+        self.clean['U3_HNC10CT14'] = values
 
         # 修复值和标记值随着错误的注入后续会发生变化
         self.modified = self.origin.copy(deep=True)
