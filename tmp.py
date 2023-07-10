@@ -308,5 +308,7 @@ if __name__ == '__main__':
     plt.ylabel('F1-score')
     plt.legend()
 
+    # 最后显示正确值
+    plt.plot(x_truth, y_truth, 'o-', ms=3, linewidth=1, markerfacecolor='white', c='g')
     # print(methods)
     plt.show()
