@@ -293,4 +293,69 @@ if __name__ == '__main__':
         model.free_mdl()
     plt.scatter(x5_local, y5_local, marker='o', s=16, c='blue')
 
+    # 约束范围示例图
+    fig, ax = plt.subplots(figsize=(5, 5))
+    plt.xlim(7.2, 7.55)
+    plt.ylim(7.2, 7.55)
+    plt.xlabel('U3_HNC10CX101')
+    plt.ylabel('U3_HNC10CY101')
+    plt.grid(True, linestyle='-.')
+    # 数据点
+    x = x_truth[:8]
+    y = y_truth[:8]
+    x[4] += 0.13
+    y[4] -= 0.13
+    x_error = x[4]
+    y_error = y[4]
+    # 一致性约束范围
+    u = np.linspace(7.2, 7.55, 100)
+    v1 = u + 0.05
+    v2 = u - 0.05
+    plt.plot(u, v1, '--', linewidth=1, c='black')
+    plt.plot(u, v2, '--', linewidth=1, c='black')
+    plt.fill_between(u, v1, v2, where=v1 > v2, color='skyblue', alpha=0.5)
+    # 散点图
+    plt.scatter(x, y, marker='o', s=16, c='black')
+    # 速度约束范围
+    rect = pch.Rectangle(xy=(x[3], y[3]), width=0.055*2, height=0.055*2, facecolor='yellow', alpha=0.5)
+    ax.add_patch(rect)
+    rect = pch.Rectangle(xy=(x[3], y[3]), width=0.055, height=0.055, facecolor='orange', alpha=0.5)
+    ax.add_patch(rect)
+
+    # 局部修复点
+    model = MdoModel()
+    try:
+        # 目标函数最小化
+        model.set_int_attr(MDO_INT_ATTR.MIN_SENSE, 1)
+        # 变量
+        var = []
+        var.append(model.add_var(x[3], x[3] + 0.055, -1, None, 'x', False))
+        var.append(model.add_var(y[3], y[3] + 0.055, 1, None, 'y', False))
+        # 约束
+        # conss = []
+        conss.append(model.add_cons(-0.05, 0.05, var[0] - var[1], 'c'))
+        # 设置二次项系数
+        # model.set_quadratic_elements([var[0], var[1]], [var[0], var[1]], [1, 1])
+        # 求解
+        model.solve_prob()
+        model.display_results()
+        # 修复
+        x4_local = var[0].get_real_attr(MDO_REAL_ATTR.PRIMAL_SOLN)
+        y4_local = var[1].get_real_attr(MDO_REAL_ATTR.PRIMAL_SOLN)
+        for cur_var in var:
+            print(" - x[{0}]          : {1}".format(cur_var.get_index(),
+                                                    round(cur_var.get_real_attr(MDO_REAL_ATTR.PRIMAL_SOLN), 2)))
+    except MdoError as e:
+        print("Received Mindopt exception.")
+        print(" - Code          : {}".format(e.code))
+        print(" - Reason        : {}".format(e.message))
+    except Exception as e:
+        print("Received exception.")
+        print(" - Reason        : {}".format(e))
+    finally:
+        model.free_mdl()
+    plt.scatter(x4_local, y4_local, marker='o', s=16, c='blue')
+    rect = pch.Rectangle(xy=(x4_local, y4_local), width=0.055, height=0.055, facecolor='purple', alpha=0.5)
+    ax.add_patch(rect)
+
     plt.show()
