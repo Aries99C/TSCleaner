@@ -8,12 +8,12 @@ def error(data, order=1):
     for col in data.modified.columns:
         modified = np.array(data.modified[col].values)
         clean = np.array(data.clean[col].values)
-        # 消除量纲
-        modified = (modified - np.min(modified)) / (np.max(modified) - np.min(modified))
-        clean = (clean - np.min(clean)) / (np.max(clean) - np.min(clean))
         # 累加误差平均值
-        e = e + np.linalg.norm(modified - clean, ord=order)
-    return e / len(data.modified.columns)
+        delta = modified - clean
+        if np.std(delta) == 0.:
+            continue
+        e = e + np.linalg.norm(delta, ord=order) / np.mean(clean)
+    return e / len(data.clean)
 
 
 class Cleaner:
