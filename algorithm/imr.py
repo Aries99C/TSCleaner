@@ -137,6 +137,8 @@ class IMR(Cleaner):
         end = time.perf_counter()
         print(round(end - start, 2), 'ms')
 
+        return round(end - start, 2), error(self.dataset)
+
 
 if __name__ == '__main__':
     fan = MTS('fan')

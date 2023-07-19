@@ -10,6 +10,9 @@ from mindoptpy import *
 class Constraint(Cleaner):
 
     def clean(self):
+        # 先重新拷贝观测值
+        self.dataset.modified = self.dataset.origin.copy(deep=True)
+
         info = {}
         for col in self.dataset.clean.columns:
             info[col] = {}
@@ -179,7 +182,7 @@ class Constraint(Cleaner):
 
         print(round(t, 2), 'ms')
 
-        return info
+        return t, error(self.dataset)
 
 
 if __name__ == '__main__':
@@ -195,8 +198,8 @@ if __name__ == '__main__':
     cleaner = Constraint(fan)
     info = cleaner.clean()
 
-    fan.modified.plot(subplots=True, figsize=(20, 30))
-    plt.show()
+    # fan.modified.plot(subplots=True, figsize=(20, 30))
+    # plt.show()
 
     after_fix = error(fan)
 

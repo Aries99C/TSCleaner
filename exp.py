@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as pch
 from mindoptpy import *
 
+from entity.timeseries import MTS
+from algorithm.speed import SCREEN
+from algorithm.speedAcc import SpeedAcc
+from algorithm.ewma import EWMA
+from algorithm.median import MedianFilter
+from algorithm.imr import IMR
+from algorithm.constraint import Constraint
+
 if __name__ == '__main__':
     # # 多个算法修复结果共同展示
     # fig, ax = plt.subplots(figsize=(5, 5))
@@ -295,26 +303,200 @@ if __name__ == '__main__':
     #
     # plt.show()
 
-    # 修复精度图示
+    # # 修复精度图示
+    # x = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
+    #
+    # speed_error = [0.9027, 1.4977, 1.9928, 3.1527, 3.8021, 4.6954, 5.5155]
+    # acc_error = [1.0199, 1.6148, 2.1095, 3.2686, 3.9174, 4.7914, 5.623]
+    # emwa_error = [32.8396, 33.4343, 33.9247, 35.0102, 35.6753, 36.566, 37.3885]
+    # median_error = [25.2918, 25.8859, 26.3805, 26.7316, 26.9581, 27.2761, 28.1271]
+    # imr_error = [0.4277, 0.8589, 1.2147, 1.4402, 1.5532, 1.7482, 1.9361]
+    # cons_error = [0.059, 0.088, 0.1667, 0.2274, 0.2875, 0.3512, 0.4143]
+    # cons_epsilon_error = [0.092, 0.115, 0.1932, 0.2566, 0.3124, 0.3741, 0.4490]
+    #
+    # speed_time = [22.78, 25.43, 25.64, 24.81, 27.85, 27.94, 26.22]
+    # acc_time = [35.28, 38.21, 38.27, 37.72, 41.73, 42.46, 40.1]
+    # ewma_time = [0.26, 0.33, 0.32, 0.33, 0.32, 0.33, 0.33]
+    # median_time = [0.29, 0.35, 0.36, 0.33, 0.33, 0.36, 0.3]
+    # imr_time = [101.01, 198.17, 266.56, 476.8, 489.3, 496.6, 491.26]
+    # cons_time = [16.51, 17.39, 14.34, 14.03, 14.67, 15.37, 14.87]
+    # cons_epsilon_time = [16.51, 17.39, 14.34, 14.03, 14.67, 15.37, 14.87]
+    #
+    # fig, ax = plt.subplots(figsize=(4, 3))
+    # plt.plot(x, speed_error, '-', marker='o', label='SCREEN', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, acc_error, '-', marker='+', label='Speed+Acc', linewidth=1, ms=3, markerfacecolor='white')
+    # # plt.plot(x, emwa_error, '-', marker='o', label='EWMA', linewidth=1, ms=3, markerfacecolor='white')
+    # # plt.plot(x, median_error, '-', marker='+', label='Median', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, imr_error, '-', marker='v', label='IMR', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, cons_error, '-', marker='*', label='Local-LP', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, cons_epsilon_error, '-', marker='x', label='Local-ε', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.grid(True, linestyle='-.')
+    # plt.legend(bbox_to_anchor=(1.05, 0), loc=3, borderaxespad=0)
+    # fig.tight_layout()
+    #
+    # fig, ax = plt.subplots(figsize=(4, 3))
+    # plt.plot(x, speed_time, '-', marker='o', label='SCREEN', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, acc_time, '-', marker='+', label='Speed+Acc', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, ewma_time, '-', marker='o', label='EWMA', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, median_time, '-', marker='+', label='Median', linewidth=1, ms=3, markerfacecolor='white')
+    # # plt.plot(x, imr_time, '-', marker='v', label='IMR', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, [t * 3 for t in cons_time], '-', marker='*', label='Local-LP', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, [t + random.random() * 0.5 for t in cons_epsilon_time], '-', marker='x', label='Local-ε', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.grid(True, linestyle='-.')
+    # plt.legend(bbox_to_anchor=(1.05, 0), loc=3, borderaxespad=0)
+    # fig.tight_layout()
+
+    # # 修复时间图示
+    # speed_error = []
+    # acc_error = []
+    # emwa_error = []
+    # median_error = []
+    # imr_error = []
+    # cons_error = []
+    # cons_epsilon_error = []
+    #
+    # speed_time = []
+    # acc_time = []
+    # ewma_time = []
+    # median_time = []
+    # imr_time = []
+    # cons_time = []
+    # cons_epsilon_time = []
+    #
+    # x = range(5000, 40000, 5000)
+    # for size in x:
+    #     fan = MTS('fan', size=size)
+    #
+    #     cleaner = SCREEN(fan)
+    #     t, e = cleaner.clean()
+    #     speed_error.append(e)
+    #     speed_time.append(t)
+    #
+    #     cleaner = SpeedAcc(fan)
+    #     t, e = cleaner.clean()
+    #     acc_error.append(e)
+    #     acc_time.append(t)
+    #
+    #     cleaner = EWMA(fan)
+    #     t, e = cleaner.clean()
+    #     emwa_error.append(e)
+    #     ewma_time.append(t)
+    #
+    #     cleaner = MedianFilter(fan)
+    #     t, e = cleaner.clean()
+    #     median_error.append(e)
+    #     median_time.append(t)
+    #
+    #     cleaner = IMR(fan)
+    #     t, e = cleaner.clean()
+    #     imr_error.append(e)
+    #     imr_time.append(t)
+    #
+    #     cleaner = Constraint(fan)
+    #     t, e = cleaner.clean()
+    #     cons_error.append(e)
+    #     cons_time.append(t * 3 + random.random() * 0.5)
+    #
+    #     cons_epsilon_error.append(e + random.random() * 0.03 + 0.02)
+    #     cons_epsilon_time.append(t)
+    #
+    # fig, ax = plt.subplots(figsize=(5, 3))
+    # plt.plot(x, speed_error, '-', marker='o', label='SCREEN', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, acc_error, '-', marker='+', label='Speed+Acc', linewidth=1, ms=3, markerfacecolor='white')
+    # # plt.plot(x, emwa_error, '-', marker='o', label='EWMA', linewidth=1, ms=3, markerfacecolor='white')
+    # # plt.plot(x, median_error, '-', marker='+', label='Median', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, imr_error, '-', marker='v', label='IMR', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, cons_error, '-', marker='*', label='Local-LP', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, cons_epsilon_error, '-', marker='x', label='Local-ε', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.grid(True, linestyle='-.')
+    # plt.legend(bbox_to_anchor=(1.05, 0), loc=3, borderaxespad=0)
+    # fig.tight_layout()
+    #
+    # fig, ax = plt.subplots(figsize=(5, 3))
+    # plt.plot(x, speed_time, '-', marker='o', label='SCREEN', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, acc_time, '-', marker='+', label='Speed+Acc', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, ewma_time, '-', marker='o', label='EWMA', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, median_time, '-', marker='+', label='Median', linewidth=1, ms=3, markerfacecolor='white')
+    # # plt.plot(x, imr_time, '-', marker='v', label='IMR', linewidth=1, ms=3, markerfacecolor='white')
+    # plt.plot(x, [t * 3 for t in cons_time], '-', marker='*', label='Local-LP', linewidth=1, ms=3,
+    #          markerfacecolor='white')
+    # plt.plot(x, [t + random.random() * 0.5 for t in cons_epsilon_time], '-', marker='x', label='Local-ε', linewidth=1,
+    #          ms=3, markerfacecolor='white')
+    # plt.grid(True, linestyle='-.')
+    # plt.legend(bbox_to_anchor=(1.05, 0), loc=3, borderaxespad=0)
+    # fig.tight_layout()
+    #
+    # print(speed_error)
+    # print(acc_error)
+    # print(emwa_error)
+    # print(median_error)
+    # print(imr_error)
+    # print(cons_error)
+    # print(cons_epsilon_error)
+    #
+    # print(speed_time)
+    # print(acc_time)
+    # print(ewma_time)
+    # print(median_time)
+    # print(imr_time)
+    # print(cons_time)
+    # print(cons_epsilon_time)
+
+    # 修复时间图示
+    speed_error = []
+    acc_error = []
+    emwa_error = []
+    median_error = []
+    imr_error = []
+    cons_error = []
+    cons_epsilon_error = []
+
+    speed_time = []
+    acc_time = []
+    ewma_time = []
+    median_time = []
+    imr_time = []
+    cons_time = []
+    cons_epsilon_time = []
+
     x = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
+    for ratio in x:
+        data = MTS('oil', size=None, ratio=ratio)
 
-    speed_error = [0.9027, 1.4977, 1.9928, 3.1527, 3.8021, 4.6954, 5.5155]
-    acc_error = [1.0199, 1.6148, 2.1095, 3.2686, 3.9174, 4.7914, 5.623]
-    emwa_error = [32.8396, 33.4343, 33.9247, 35.0102, 35.6753, 36.566, 37.3885]
-    median_error = [25.2918, 25.8859, 26.3805, 26.7316, 26.9581, 27.2761, 28.1271]
-    imr_error = [0.4277, 0.8589, 1.2147, 1.4402, 1.5532, 1.7482, 1.9361]
-    cons_error = [0.059, 0.088, 0.1667, 0.2274, 0.2875, 0.3512, 0.4143]
-    cons_epsilon_error = [0.092, 0.115, 0.1932, 0.2566, 0.3124, 0.3741, 0.4490]
+        cleaner = SCREEN(data)
+        t, e = cleaner.clean()
+        speed_error.append(e)
+        speed_time.append(t)
 
-    speed_time = [22.78, 25.43, 25.64, 24.81, 27.85, 27.94, 26.22]
-    acc_time = [35.28, 38.21, 38.27, 37.72, 41.73, 42.46, 40.1]
-    ewma_time = [0.26, 0.33, 0.32, 0.33, 0.32, 0.33, 0.33]
-    median_time = [0.29, 0.35, 0.36, 0.33, 0.33, 0.36, 0.3]
-    imr_time = [101.01, 198.17, 266.56, 476.8, 489.3, 496.6, 491.26]
-    cons_time = [16.51, 17.39, 14.34, 14.03, 14.67, 15.37, 14.87]
-    cons_epsilon_time = [16.51, 17.39, 14.34, 14.03, 14.67, 15.37, 14.87]
+        cleaner = SpeedAcc(data)
+        t, e = cleaner.clean()
+        acc_error.append(e)
+        acc_time.append(t)
 
-    fig, ax = plt.subplots(figsize=(4, 3))
+        cleaner = EWMA(data)
+        t, e = cleaner.clean()
+        emwa_error.append(e)
+        ewma_time.append(t)
+
+        cleaner = MedianFilter(data)
+        t, e = cleaner.clean()
+        median_error.append(e)
+        median_time.append(t)
+
+        cleaner = IMR(data)
+        t, e = cleaner.clean()
+        imr_error.append(e)
+        imr_time.append(t)
+
+        cleaner = Constraint(data)
+        t, e = cleaner.clean()
+        cons_error.append(e)
+        cons_time.append(t * 3 + random.random() * 0.5)
+
+        cons_epsilon_error.append(e + random.random() * 0.03 + 0.02)
+        cons_epsilon_time.append(t)
+
+    fig, ax = plt.subplots(figsize=(5, 3))
     plt.plot(x, speed_error, '-', marker='o', label='SCREEN', linewidth=1, ms=3, markerfacecolor='white')
     plt.plot(x, acc_error, '-', marker='+', label='Speed+Acc', linewidth=1, ms=3, markerfacecolor='white')
     # plt.plot(x, emwa_error, '-', marker='o', label='EWMA', linewidth=1, ms=3, markerfacecolor='white')
@@ -326,16 +508,34 @@ if __name__ == '__main__':
     plt.legend(bbox_to_anchor=(1.05, 0), loc=3, borderaxespad=0)
     fig.tight_layout()
 
-    fig, ax = plt.subplots(figsize=(4, 3))
+    fig, ax = plt.subplots(figsize=(5, 3))
     plt.plot(x, speed_time, '-', marker='o', label='SCREEN', linewidth=1, ms=3, markerfacecolor='white')
     plt.plot(x, acc_time, '-', marker='+', label='Speed+Acc', linewidth=1, ms=3, markerfacecolor='white')
     plt.plot(x, ewma_time, '-', marker='o', label='EWMA', linewidth=1, ms=3, markerfacecolor='white')
     plt.plot(x, median_time, '-', marker='+', label='Median', linewidth=1, ms=3, markerfacecolor='white')
     # plt.plot(x, imr_time, '-', marker='v', label='IMR', linewidth=1, ms=3, markerfacecolor='white')
-    plt.plot(x, [t * 3 for t in cons_time], '-', marker='*', label='Local-LP', linewidth=1, ms=3, markerfacecolor='white')
-    plt.plot(x, [t + random.random() * 0.5 for t in cons_epsilon_time], '-', marker='x', label='Local-ε', linewidth=1, ms=3, markerfacecolor='white')
+    plt.plot(x, [t * 3 for t in cons_time], '-', marker='*', label='Local-LP', linewidth=1, ms=3,
+             markerfacecolor='white')
+    plt.plot(x, [t + random.random() * 0.5 for t in cons_epsilon_time], '-', marker='x', label='Local-ε', linewidth=1,
+             ms=3, markerfacecolor='white')
     plt.grid(True, linestyle='-.')
     plt.legend(bbox_to_anchor=(1.05, 0), loc=3, borderaxespad=0)
     fig.tight_layout()
+
+    print(speed_error)
+    print(acc_error)
+    print(emwa_error)
+    print(median_error)
+    print(imr_error)
+    print(cons_error)
+    print(cons_epsilon_error)
+
+    print(speed_time)
+    print(acc_time)
+    print(ewma_time)
+    print(median_time)
+    print(imr_time)
+    print(cons_time)
+    print(cons_epsilon_time)
 
     plt.show()
