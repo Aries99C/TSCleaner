@@ -23,13 +23,15 @@ class MTS(object):
     isLabel = None  # 标记标签
     isModified = None  # 修复标签
 
-    def __init__(self, dataset=None, size=None, ratio=None):
+    def __init__(self, dataset=None, size=None, ratio=None, file=None):
         filepath = None
         # 根据数据集名称获取文件地址，可自定义
         if dataset == 'fan':
             filepath = root_path() + '/data/fan.csv'
-        if dataset == 'oil':
-            filepath = root_path() + '/data/oil/01M10000000038959.csv'
+        elif dataset == 'oil':
+            filepath = root_path() + '/data/clean_oil/' + file
+        elif dataset == 'SWaT':
+            filepath = root_path() + '/data/SWaT.csv'
         if filepath is None:
             raise FileExistsError('dataset is Wrong!')
 
@@ -80,60 +82,6 @@ class MTS(object):
 
             # 预先配置干净数据
             self.clean = self.origin.copy(deep=True)
-
-            # 提取时序数据信息
-            # info = {}
-            # for col in self.clean.columns:
-            #     info[col] = {}
-            #     info[col]['min'] = np.min(self.clean[col].values)
-            #     info[col]['max'] = np.min(self.clean[col].values)
-            #     for another_col in self.clean.columns:
-            #         info[col][another_col] = {}
-            #         info[col][another_col]['min'] = np.mean(
-            #             self.clean[col].values - self.clean[another_col].values) - 2 * np.std(
-            #             self.clean[col].values - self.clean[another_col].values)
-            #         info[col][another_col]['max'] = np.mean(
-            #             self.clean[col].values - self.clean[another_col].values) + 2 * np.std(
-            #             self.clean[col].values - self.clean[another_col].values)
-
-            # # 清洗U3_HNV20CT104中的小段错误
-            # for i in range(1, len(self.clean)):
-            #     model = MdoModel()
-            #     try:
-            #         # 目标函数最小化
-            #         model.set_int_attr(MDO_INT_ATTR.MIN_SENSE, 1)
-            #         # 变量
-            #         vars = []
-            #         for col in info.keys():
-            #             vars.append(model.add_var(0, MdoModel.get_infinity(), 1., None, 'u_' + col, False))
-            #             vars.append(model.add_var(0, MdoModel.get_infinity(), 1., None, 'v_' + col, False))
-            #         # 引风机约束
-            #         model.add_cons(
-            #             info['U3_HNV20CT104']['U3_HNV20CT101']['min'] - self.clean.iat[i, 40] +
-            #             self.clean.iat[i, 38],
-            #             info['U3_HNV20CT104']['U3_HNV20CT101']['max'] - self.clean.iat[i, 40] +
-            #             self.clean.iat[i, 38],
-            #             (vars[80] - vars[81]) - (vars[76] - vars[77]),
-            #             'U3_HNV20CT104 - U3_HNV20CT101')
-            #         model.add_cons(
-            #             info['U3_HNV20CT104']['U3_HNV20CT102']['min'] - self.clean.iat[i, 40] +
-            #             self.clean.iat[i, 39],
-            #             info['U3_HNV20CT104']['U3_HNV20CT102']['max'] - self.clean.iat[i, 40] +
-            #             self.clean.iat[i, 39],
-            #             (vars[80] - vars[81]) - (vars[78] - vars[79]),
-            #             'U3_HNV20CT104 - U3_HNV20CT102')
-            #         model.solve_prob()
-            #         # 修复
-            #         for idx, col in enumerate(info.keys()):
-            #             u = vars[idx * 2].get_real_attr(MDO_REAL_ATTR.PRIMAL_SOLN)
-            #             v = vars[idx * 2 + 1].get_real_attr(MDO_REAL_ATTR.PRIMAL_SOLN)
-            #             self.clean.iat[i, idx] += (u - v)
-            #     except MdoError as e:
-            #         print("Received Mindopt exception.")
-            #         # print(" - Code          : {}".format(e.code))
-            #         # print(" - Reason        : {}".format(e.message))
-            #     finally:
-            #         model.free_mdl()
 
             # 清空标记
             self.label = self.clean.copy(deep=True)
@@ -268,10 +216,8 @@ class MTS(object):
             # 过滤不被使用的序列
             self.origin.drop(columns=['O2', 'N2', 'TOTALHYDROCARBON'], inplace=True)
             # 填充缺失值
-            for col in self.origin.columns:
-                if col != 'C2H2':
-                    self.origin[col].replace(0, np.nan, inplace=True)
-            self.origin.interpolate(method='linear', inplace=True)
+            self.origin.fillna(method='ffill', inplace=True)
+            self.origin.fillna(method='bfill', inplace=True)
 
             self.len = len(self.origin)
             self.dim = len(self.origin.columns)
@@ -286,7 +232,64 @@ class MTS(object):
                 self.isLabel[col] = False
                 self.isLabel[:20] = True
 
+            # self.origin.plot(subplots=True, figsize=(8, 6))
+            # plt.show()
+
+            # 计算每个属性的最大最小值
+            info = {}
+            for col in self.clean.columns:
+                info[col] = {}
+                values = self.clean[col].values
+                info[col]['min'] = 0.
+                info[col]['max'] = np.max(values)
+                info[col]['mean'] = np.mean(values)
+
             # 注入错误
+            # 分配不同类型的错误
+            continuous = ratio / 4
+            single = ratio / 4
+            # 注入连续错误
+            error_len = int(self.len * continuous)
+            cols = ['CH4', 'C2H4', 'C2H2', 'C2H6']
+            col_list = random.sample(cols, 2)
+            for col in col_list:
+                for i in range(int(self.len * 0.2), int(self.len * 0.2) + error_len):
+                    self.origin[col].values[i] += info[col]['mean'] / 2 + random.random() * info[col]['mean'] / 15
+            # 随机标注少量标记值
+            random_label_index = np.random.randint(int(self.len * 0.2), int(self.len * 0.2) + error_len, size=int(error_len * 0.1))
+            self.isLabel[random_label_index] = True
+            # 注入连续错误
+            error_len = int(self.len * continuous)
+            cols = ['CH4', 'C2H4', 'C2H2', 'C2H6']
+            col_list = random.sample(cols, 2)
+            for col in col_list:
+                for i in range(int(self.len * 0.4), int(self.len * 0.4) + error_len):
+                    self.origin[col].values[i] += info[col]['mean'] / 2 + random.random() * info[col]['mean'] / 15
+            # 随机标注少量标记值
+            random_label_index = np.random.randint(int(self.len * 0.4), int(self.len * 0.4) + error_len,
+                                                   size=int(error_len * 0.1))
+            self.isLabel[random_label_index] = True
+            # 注入连续错误
+            error_len = int(self.len * continuous)
+            cols = ['CH4', 'C2H4', 'C2H2', 'C2H6']
+            col_list = random.sample(cols, 2)
+            for col in col_list:
+                for i in range(int(self.len * 0.6), int(self.len * 0.6) + error_len):
+                    self.origin[col].values[i] += info[col]['mean'] / 2 + random.random() * info[col]['mean'] / 15
+            # 随机标注少量标记值
+            random_label_index = np.random.randint(int(self.len * 0.6), int(self.len * 0.6) + error_len,
+                                                   size=int(error_len * 0.1))
+            self.isLabel[random_label_index] = True
+
+            # 注入单点错误
+            error_len = int(self.len * single)
+            cols = ['CH4', 'C2H4', 'C2H2', 'C2H6']
+            for i in range(int(self.len * 0.8), int(self.len * 0.8) + error_len):
+                if i % 3 == 0 and random.random() <= 0.1:
+                    self.isLabel[i] = True
+                    col_list = random.sample(cols, 2)
+                    for col in col_list:
+                        self.origin[col].values[i] += info[col]['mean'] / 3 + random.random() * info[col]['mean'] / 15
 
             # 修复值重置为观测值
             self.modified = self.origin.copy(deep=True)
@@ -304,13 +307,18 @@ if __name__ == '__main__':
     # print(fan.len)
     # print(fan.dim)
 
-    oil = MTS('oil')
+    # for file in os.listdir('../data/clean_oil/'):
+    #     oil = MTS('oil', size=None, ratio=0.2, file=file)
+    #     if oil.origin.isna().sum().sum() > 0:
+    #         print('nan')
+
+    oil = MTS('oil', size=None, ratio=0.2, file='01M10000000039263.csv')
 
     oil.origin.plot(subplots=True, figsize=(8, 6))
     plt.show()
 
-    print(oil.len)
-    print(oil.dim)
+    # print(oil.len)
+    # print(oil.dim)
 
     # fig = plt.figure(1, figsize=(10, 6))
     # ax = Axes3D(fig, auto_add_to_figure=False)
